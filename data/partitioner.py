@@ -295,10 +295,10 @@ class FederatedDataPartitioner:
             
             # Compute statistics
             client_stats = {
-                'client_id': client_id,
-                'num_samples': len(subset),
+                'client_id': int(client_id),
+                'num_samples': int(len(subset)),
                 'label_distribution': labels.sum(axis=0).tolist(),
-                'avg_labels_per_sample': labels.sum(axis=1).mean(),
+                'avg_labels_per_sample': float(labels.sum(axis=1).mean()),
             }
             
             stats.append(client_stats)
