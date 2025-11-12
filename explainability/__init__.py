@@ -7,4 +7,8 @@ from .shap_explainer import SHAPExplainer
 from .shap_visualizer import SHAPVisualizer
 from .explanation_analyzer import ExplanationAnalyzer
 
-__all__ = ['SHAPExplainer', 'SHAPVisualizer', 'ExplanationAnalyzer']
+__all__ = [
+    'SHAPExplainer',
+    'SHAPVisualizer',
+    'ExplanationAnalyzer'
+]
