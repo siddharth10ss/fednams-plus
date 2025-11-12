@@ -60,7 +60,8 @@
 
 
 
-- [ ] 2.4 Create abstract dataset interface for extensibility
+- [x] 2.4 Create abstract dataset interface for extensibility
+
   - Define BaseDataset abstract class with load(), preprocess(), and get_labels() methods
   - Implement MIMICCXRDataset as concrete implementation
   - Add dataset registry pattern for easy dataset switching

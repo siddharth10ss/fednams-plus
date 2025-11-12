@@ -127,12 +127,12 @@ class DataPreprocessor:
         Returns:
             Binary label matrix (n_samples, n_classes)
         """
-        # NIH Chest X-ray pathology classes (14 classes + No Finding)
+        # NIH Chest X-ray pathology classes (15 total: 14 diseases + No Finding)
         pathology_classes = [
-            'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration',
-            'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax',
-            'Consolidation', 'Edema', 'Emphysema', 'Fibrosis',
-            'Pleural_Thickening', 'Hernia', 'No Finding'
+            'Atelectasis', 'Consolidation', 'Infiltration', 'Pneumothorax',
+            'Edema', 'Emphysema', 'Fibrosis', 'Effusion',
+            'Pneumonia', 'Pleural_Thickening', 'Cardiomegaly', 'Nodule',
+            'Mass', 'Hernia', 'No Finding'
         ]
         
         # Check if labels are in 'Finding Labels' column (NIH format)

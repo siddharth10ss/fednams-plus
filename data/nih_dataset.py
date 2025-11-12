@@ -17,10 +17,16 @@ logger = get_logger(__name__)
 
 @DatasetRegistry.register('nih-cxr')
 class NIHChestXrayDataset(BaseDataset):
-    """NIH Chest X-ray Dataset.
+    """NIH Chest X-ray Dataset (ChestX-ray8).
     
-    Dataset contains 112,120 frontal-view X-ray images with 14 disease labels.
+    Dataset contains 112,120 frontal-view X-ray images (1024x1024) from 30,805 unique patients.
+    15 classes: 14 diseases + "No Finding"
+    Labels extracted via NLP from radiological reports (>90% accuracy).
+    
     Source: https://www.kaggle.com/datasets/nih-chest-xrays/data
+    Paper: Wang et al., "ChestX-ray8: Hospital-scale Chest X-ray Database and 
+           Benchmarks on Weakly-Supervised Classification and Localization of 
+           Common Thorax Diseases." IEEE CVPR 2017
     """
     
     def __init__(self, data_dir: Path, transform: transforms.Compose = None):
@@ -33,12 +39,13 @@ class NIHChestXrayDataset(BaseDataset):
         super().__init__(data_dir)
         self.transform = transform
         
-        # NIH pathology classes
+        # NIH pathology classes (15 total: 14 diseases + No Finding)
+        # Based on ChestX-ray8 dataset from Wang et al.
         self.class_names = [
-            'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration',
-            'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax',
-            'Consolidation', 'Edema', 'Emphysema', 'Fibrosis',
-            'Pleural_Thickening', 'Hernia', 'No Finding'
+            'Atelectasis', 'Consolidation', 'Infiltration', 'Pneumothorax',
+            'Edema', 'Emphysema', 'Fibrosis', 'Effusion',
+            'Pneumonia', 'Pleural_Thickening', 'Cardiomegaly', 'Nodule',
+            'Mass', 'Hernia', 'No Finding'
         ]
     
     def load(self) -> None:
