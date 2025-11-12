@@ -82,8 +82,11 @@ class ExperimentRunner:
         
         self.logger.info("Experiment setup complete")
     
-    def run_experiment(self) -> Dict[str, Any]:
+    def run_experiment(self, data_dir: Path) -> Dict[str, Any]:
         """Run complete experiment.
+        
+        Args:
+            data_dir: Path to dataset directory
         
         Returns:
             Dictionary of experiment results
@@ -93,24 +96,173 @@ class ExperimentRunner:
         # Setup
         self.setup_experiment()
         
-        # Placeholder for actual experiment execution
-        # In practice, this would:
-        # 1. Load data
-        # 2. Create model
-        # 3. Run training
-        # 4. Evaluate
-        # 5. Generate explanations
-        # 6. Compute uncertainty
+        try:
+            # 1. Load and prepare data
+            self.logger.info("Loading dataset...")
+            train_loader, val_loader, test_loader, client_loaders = self._load_data(data_dir)
+            
+            # 2. Create model
+            self.logger.info("Creating model...")
+            model = self._create_model()
+            
+            # 3. Run federated training
+            self.logger.info("Starting federated training...")
+            training_history = self._run_federated_training(model, client_loaders, val_loader)
+            
+            # 4. Evaluate on test set
+            self.logger.info("Evaluating on test set...")
+            test_metrics = self.evaluate_model(model, test_loader)
+            
+            # 5. Compile results
+            results = {
+                'experiment_name': self.config.experiment_name,
+                'status': 'completed',
+                'training_history': training_history,
+                'test_metrics': test_metrics,
+                'config': {
+                    'num_clients': self.config.fed_config.num_clients,
+                    'num_rounds': self.config.fed_config.num_rounds,
+                    'batch_size': self.config.training_config.batch_size,
+                    'learning_rate': self.config.training_config.learning_rate
+                }
+            }
+            
+            self.logger.info("Experiment completed successfully")
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"Experiment failed: {str(e)}", exc_info=True)
+            return {
+                'experiment_name': self.config.experiment_name,
+                'status': 'failed',
+                'error': str(e)
+            }
+    
+    def _load_data(self, data_dir: Path):
+        """Load and partition data for federated learning.
         
-        results = {
-            'experiment_name': self.config.experiment_name,
-            'status': 'setup_complete',
-            'message': 'Experiment runner initialized. Implement training loop.'
-        }
+        Args:
+            data_dir: Path to dataset directory
+            
+        Returns:
+            Tuple of (train_loader, val_loader, test_loader, client_loaders)
+        """
+        from data import NIHChestXrayDataset, DataPreprocessor, FederatedDataPartitioner
         
-        self.logger.info("Experiment execution placeholder complete")
+        # Load dataset
+        dataset = NIHChestXrayDataset(data_dir=data_dir)
+        dataset.load()
         
-        return results
+        self.logger.info(f"Loaded {len(dataset)} images")
+        
+        # Create preprocessor
+        preprocessor = DataPreprocessor(self.config.data_config)
+        
+        # Apply transforms to dataset
+        dataset.transform = preprocessor.train_transform
+        
+        # Split into train/val/test
+        train_dataset, val_dataset, test_dataset = preprocessor.create_train_val_test_split(
+            dataset,
+            train_ratio=0.7,
+            val_ratio=0.15,
+            test_ratio=0.15,
+            seed=self.config.seed
+        )
+        
+        # Partition training data for federated learning
+        partitioner = FederatedDataPartitioner(
+            num_clients=self.config.fed_config.num_clients,
+            strategy='dirichlet',
+            alpha=0.5,
+            min_samples=100
+        )
+        
+        client_datasets = partitioner.partition(train_dataset)
+        
+        # Create data loaders
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=self.config.training_config.batch_size,
+            shuffle=True,
+            num_workers=2
+        )
+        
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=self.config.training_config.batch_size,
+            shuffle=False,
+            num_workers=2
+        )
+        
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=self.config.training_config.batch_size,
+            shuffle=False,
+            num_workers=2
+        )
+        
+        # Create client loaders
+        client_loaders = {}
+        for client_id, client_data in client_datasets.items():
+            client_loaders[client_id] = DataLoader(
+                client_data,
+                batch_size=self.config.training_config.batch_size,
+                shuffle=True,
+                num_workers=2
+            )
+        
+        self.logger.info(f"Created {len(client_loaders)} client data loaders")
+        
+        return train_loader, val_loader, test_loader, client_loaders
+    
+    def _create_model(self):
+        """Create FedNAMs+ model.
+        
+        Returns:
+            FedNAMs model instance
+        """
+        from models import FedNAMsModel
+        
+        model = FedNAMsModel(
+            backbone=self.config.model_config.backbone,
+            pretrained=self.config.model_config.pretrained,
+            feature_dim=self.config.model_config.feature_dim,
+            num_classes=self.config.model_config.num_classes,
+            nam_hidden_units=self.config.model_config.nam_hidden_units,
+            dropout=self.config.model_config.dropout,
+            use_exu=self.config.model_config.use_exu
+        )
+        
+        model = model.to(self.config.device)
+        
+        self.logger.info(f"Created {self.config.model_config.backbone} model with NAM head")
+        
+        return model
+    
+    def _run_federated_training(self, model, client_loaders, val_loader):
+        """Run federated training across clients.
+        
+        Args:
+            model: Model to train
+            client_loaders: Dictionary of client data loaders
+            val_loader: Validation data loader
+            
+        Returns:
+            Training history dictionary
+        """
+        from training import FederatedOrchestrator
+        
+        orchestrator = FederatedOrchestrator(
+            model=model,
+            client_loaders=client_loaders,
+            config=self.config,
+            device=self.config.device
+        )
+        
+        history = orchestrator.run_training(val_loader=val_loader)
+        
+        return history
     
     def evaluate_model(
         self,
