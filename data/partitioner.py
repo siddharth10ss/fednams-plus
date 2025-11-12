@@ -293,11 +293,11 @@ class FederatedDataPartitioner:
             
             labels = np.array(labels)
             
-            # Compute statistics
+            # Compute statistics (convert all numpy types to Python types)
             client_stats = {
                 'client_id': int(client_id),
                 'num_samples': int(len(subset)),
-                'label_distribution': labels.sum(axis=0).tolist(),
+                'label_distribution': [float(x) for x in labels.sum(axis=0)],
                 'avg_labels_per_sample': float(labels.sum(axis=1).mean()),
             }
             
