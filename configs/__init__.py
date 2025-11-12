@@ -10,11 +10,13 @@ from .config import (
     FedConfig,
     ExperimentConfig
 )
+from .config_loader import ConfigLoader
 
 __all__ = [
     'PreprocessConfig',
     'ModelConfig',
     'TrainingConfig',
     'FedConfig',
-    'ExperimentConfig'
+    'ExperimentConfig',
+    'ConfigLoader'
 ]

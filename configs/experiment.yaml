@@ -1,0 +1,67 @@
+# FedNAMs+ Experiment Configuration
+
+experiment_name: "fednams_plus_baseline"
+seed: 42
+device: "cuda"  # or "cpu"
+
+# Data configuration
+data:
+  dataset: "nih-cxr"
+  data_dir: "data/nih-cxr"
+  image_size: [224, 224]
+  normalization: "imagenet"
+  augmentation: true
+  augmentation_params:
+    horizontal_flip_prob: 0.5
+    rotation_degrees: 10
+    brightness: 0.2
+    contrast: 0.2
+
+# Federated learning configuration
+federated:
+  num_clients: 5
+  num_rounds: 50
+  client_fraction: 1.0  # Fraction of clients per round
+  min_clients: 3
+  partition_strategy: "dirichlet"
+  alpha: 0.5  # For Dirichlet partitioning
+
+# Model configuration
+model:
+  backbone: "resnet18"  # resnet18, resnet50, densenet121
+  pretrained: true
+  feature_dim: 512
+  num_classes: 15  # NIH has 15 classes
+  nam_hidden_units: [64, 32]
+  dropout: 0.3
+  use_exu: false
+
+# Training configuration
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  num_local_epochs: 5
+  optimizer: "adam"  # adam, sgd, adamw
+  scheduler: "cosine"  # cosine, step, null
+  early_stopping_patience: 10
+  mixed_precision: true
+
+# Explainability configuration
+explainability:
+  compute_shap: true
+  shap_background_samples: 100
+  shap_test_samples: 500
+  generate_plots: true
+
+# Uncertainty configuration
+uncertainty:
+  use_conformal: true
+  confidence_level: 0.9  # 1 - alpha
+  calibration_fraction: 0.15
+
+# Output configuration
+output:
+  save_checkpoints: true
+  checkpoint_frequency: 10  # Save every N rounds
+  save_final_model: true
+  generate_visualizations: true
