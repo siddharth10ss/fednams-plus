@@ -36,13 +36,17 @@ ENV/
 .ipynb_checkpoints
 *.ipynb
 
-# Data
-data/
-*.csv
-*.jpg
-*.jpeg
-*.png
-*.dcm
+# Data files (but not data module code)
+data/**/*.csv
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.dcm
+data/**/images*/
+data/**/sample*/
+!data/*.py
+!data/__init__.py
+!data/README.md
 
 # Model checkpoints
 *.pt
