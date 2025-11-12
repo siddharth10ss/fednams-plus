@@ -244,16 +244,33 @@ class ExperimentRunner:
         Returns:
             Training history dictionary
         """
-        from training import FederatedOrchestrator
+        from training import LocalTrainer, FedAvgAggregator, FederatedOrchestrator
         
+        # Create local trainers for each client
+        clients = []
+        for client_id in range(self.config.fed_config.num_clients):
+            trainer = LocalTrainer(
+                model=model,
+                config=self.config.training_config,
+                device=self.config.device
+            )
+            clients.append(trainer)
+        
+        # Create aggregator
+        aggregator = FedAvgAggregator()
+        
+        # Create orchestrator
         orchestrator = FederatedOrchestrator(
-            model=model,
-            client_loaders=client_loaders,
-            config=self.config,
-            device=self.config.device
+            clients=clients,
+            aggregator=aggregator,
+            config=self.config.fed_config
         )
         
-        history = orchestrator.run_training(val_loader=val_loader)
+        # Run training
+        history = orchestrator.run_training(
+            train_loaders=list(client_loaders.values()),
+            val_loader=val_loader
+        )
         
         return history
     
