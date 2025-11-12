@@ -224,15 +224,8 @@ class ExperimentRunner:
         """
         from models import FedNAMsModel
         
-        model = FedNAMsModel(
-            backbone=self.config.model_config.backbone,
-            pretrained=self.config.model_config.pretrained,
-            feature_dim=self.config.model_config.feature_dim,
-            num_classes=self.config.model_config.num_classes,
-            nam_hidden_units=self.config.model_config.nam_hidden_units,
-            dropout=self.config.model_config.dropout,
-            use_exu=self.config.model_config.use_exu
-        )
+        # Pass the entire ModelConfig object
+        model = FedNAMsModel(config=self.config.model_config)
         
         model = model.to(self.config.device)
         
