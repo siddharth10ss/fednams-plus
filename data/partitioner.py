@@ -77,7 +77,18 @@ class FederatedDataPartitioner:
         # Get all labels
         labels = self._extract_labels(dataset)
         n_samples = len(labels)
-        n_classes = labels.shape[1]
+        
+        # Check if dataset is empty
+        if n_samples == 0:
+            raise DataError("Cannot partition empty dataset")
+        
+        # Check label shape
+        if len(labels.shape) == 1:
+            # Single-label case
+            n_classes = int(labels.max()) + 1
+            labels = np.eye(n_classes)[labels.astype(int)]
+        else:
+            n_classes = labels.shape[1]
         
         # For multi-label, use primary label (most common positive label)
         primary_labels = np.argmax(labels, axis=1)

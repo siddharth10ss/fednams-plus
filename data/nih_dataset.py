@@ -71,13 +71,24 @@ class NIHChestXrayDataset(BaseDataset):
         
         logger.info(f"Found {len(image_dirs)} image directories")
         
-        # Build image path mapping
+        # Build image path mapping (search recursively)
         image_path_map = {}
         for img_dir in image_dirs:
-            for img_file in img_dir.glob('*.png'):
+            # Try both .png and .jpg extensions
+            for img_file in img_dir.rglob('*.png'):
+                image_path_map[img_file.name] = img_file
+            for img_file in img_dir.rglob('*.jpg'):
                 image_path_map[img_file.name] = img_file
         
         logger.info(f"Found {len(image_path_map)} total images")
+        
+        # Debug: show what we found
+        if len(image_path_map) == 0:
+            logger.warning(f"No images found! Checking directory structure...")
+            for img_dir in image_dirs:
+                logger.warning(f"  Directory: {img_dir}")
+                sample_files = list(img_dir.iterdir())[:5]
+                logger.warning(f"  Sample contents: {[f.name for f in sample_files]}")
         
         # Match images with labels
         self.image_paths = []
