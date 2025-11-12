@@ -267,9 +267,13 @@ class ExperimentRunner:
         )
         
         # Run training
+        # Note: orchestrator expects val_loaders (list), but we have one val_loader
+        # We'll use the same val_loader for all clients
+        val_loaders = [val_loader] * self.config.fed_config.num_clients
+        
         history = orchestrator.run_training(
             train_loaders=list(client_loaders.values()),
-            val_loader=val_loader
+            val_loaders=val_loaders
         )
         
         return history
