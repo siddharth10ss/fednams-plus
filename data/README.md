@@ -1,135 +1,264 @@
 # Data Module
 
-This module handles dataset downloading, preprocessing, and federated partitioning for FedNAMs+.
+This module handles dataset management for FedNAMs+, including downloading, preprocessing, and federated partitioning.
 
-## Components
+## Supported Datasets
 
-### DataDownloader (`downloader.py`)
-Downloads and validates the MIMIC-CXR dataset from Kaggle or manual sources.
+### NIH Chest X-ray Dataset (Primary)
+- **Source**: https://www.kaggle.com/datasets/nih-chest-xrays/data
+- **Images**: 112,120 frontal-view chest X-rays
+- **Classes**: 15 (14 diseases + No Finding)
+- **Format**: PNG images, CSV labels
 
-**Usage:**
+**Classes:**
+- Atelectasis
+- Cardiomegaly
+- Effusion
+- Infiltration
+- Mass
+- Nodule
+- Pneumonia
+- Pneumothorax
+- Consolidation
+- Edema
+- Emphysema
+- Fibrosis
+- Pleural_Thickening
+- Hernia
+- No Finding
+
+### MIMIC-CXR (Alternative)
+- Support exists but NIH is the primary dataset
+
+## Usage
+
+### Download Dataset
+
 ```python
 from data import DataDownloader
 
 downloader = DataDownloader()
-data_dir = downloader.download(source='kaggle', output_dir='data/mimic-cxr')
-is_valid = downloader.verify_integrity(data_dir)
+
+# Download from Kaggle (requires kaggle.json credentials)
+data_path = downloader.download(source='kaggle', output_dir='./datasets/nih-cxr')
+
+# Or use manual download
+data_path = downloader.download(source='manual', output_dir='/path/to/existing/data')
+
+# Verify integrity
+is_valid = downloader.verify_integrity(data_path)
 ```
 
-### DataPreprocessor (`preprocessor.py`)
-Preprocesses chest X-ray images with resizing, normalization, and augmentation.
+### Load Dataset
 
-**Usage:**
+```python
+from data import NIHChestXrayDataset, DatasetRegistry
+from pathlib import Path
+
+# Method 1: Direct instantiation
+dataset = NIHChestXrayDataset(data_dir=Path('./datasets/nih-cxr'))
+dataset.load()
+
+# Method 2: Using registry
+DatasetClass = DatasetRegistry.get('nih-cxr')
+dataset = DatasetClass(data_dir=Path('./datasets/nih-cxr'))
+dataset.load()
+
+# Get statistics
+stats = dataset.get_statistics()
+print(f"Total samples: {stats['num_samples']}")
+print(f"Classes: {stats['class_names']}")
+```
+
+### Preprocess Data
+
 ```python
 from data import DataPreprocessor
-from configs import PreprocessConfig
+from configs.config import PreprocessConfig
 
+# Configure preprocessing
 config = PreprocessConfig(
     image_size=(224, 224),
     normalization='imagenet',
-    augmentation=True
+    augmentation=True,
+    augmentation_params={
+        'horizontal_flip_prob': 0.5,
+        'rotation_degrees': 10,
+        'brightness': 0.2,
+        'contrast': 0.2
+    }
 )
 
 preprocessor = DataPreprocessor(config)
-train_ds, val_ds, test_ds = preprocessor.create_train_val_test_split(dataset)
+
+# Create train/val/test splits
+train_dataset, val_dataset, test_dataset = preprocessor.create_train_val_test_split(
+    dataset,
+    train_ratio=0.7,
+    val_ratio=0.15,
+    test_ratio=0.15,
+    seed=42
+)
 ```
 
-### FederatedDataPartitioner (`partitioner.py`)
-Partitions data into non-IID client subsets for federated learning.
+### Federated Partitioning
 
-**Strategies:**
-- **Dirichlet**: Label distribution heterogeneity (alpha parameter)
-- **Pathology**: Clients specialize in different pathologies
-- **Quantity**: Varying dataset sizes across clients
-
-**Usage:**
 ```python
 from data import FederatedDataPartitioner
 
+# Dirichlet partitioning (non-IID)
 partitioner = FederatedDataPartitioner(
     num_clients=5,
     strategy='dirichlet',
-    alpha=0.5
+    alpha=0.5,
+    min_samples=100
 )
 
-client_datasets = partitioner.partition(dataset)
-stats = partitioner.generate_statistics(client_datasets, output_dir='outputs/partitions')
+client_datasets = partitioner.partition(train_dataset)
+
+# Generate statistics
+stats_df = partitioner.generate_statistics(
+    client_datasets,
+    output_dir=Path('./outputs/partitions')
+)
 ```
 
-### BaseDataset (`base_dataset.py`)
-Abstract interface for extending to new datasets.
+## Adding a New Dataset
 
-**Adding a New Dataset:**
+To add support for a new medical imaging dataset:
 
-1. Inherit from `BaseDataset`
-2. Implement required methods: `load()`, `preprocess()`, `get_labels()`, `get_label_names()`
-3. Register with `@DatasetRegistry.register('dataset-name')`
+### 1. Create Dataset Class
 
-**Example:**
+Create a new file `data/your_dataset.py`:
+
 ```python
-from data.base_dataset import BaseDataset, DatasetRegistry
+from pathlib import Path
+from typing import List, Tuple
+import torch
+from PIL import Image
 
-@DatasetRegistry.register('chexpert')
-class CheXpertDataset(BaseDataset):
-    def load(self):
-        # Load CheXpert data
+from .base_dataset import BaseDataset, DatasetRegistry
+from utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
+
+
+@DatasetRegistry.register('your-dataset-name')
+class YourDataset(BaseDataset):
+    """Your dataset description."""
+    
+    def __init__(self, data_dir: Path, transform=None):
+        super().__init__(data_dir)
+        self.transform = transform
+        self.class_names = ['Class1', 'Class2', ...]  # Define your classes
+    
+    def load(self) -> None:
+        """Load dataset from disk."""
+        # Implement loading logic:
+        # 1. Find image files
+        # 2. Load labels/metadata
+        # 3. Populate self.image_paths and self.labels
         pass
     
-    def preprocess(self, **kwargs):
-        # Preprocess CheXpert
+    def preprocess(self, **kwargs) -> None:
+        """Preprocess the dataset."""
+        # Implement any dataset-specific preprocessing
         pass
     
-    def get_labels(self):
+    def get_labels(self) -> np.ndarray:
+        """Get label array."""
         return self.labels
     
-    def get_label_names(self):
-        return ['Cardiomegaly', 'Edema', ...]
+    def get_label_names(self) -> List[str]:
+        """Get class names."""
+        return self.class_names
+    
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get a single sample."""
+        # Load image
+        img = Image.open(self.image_paths[idx]).convert('RGB')
+        
+        # Apply transforms
+        if self.transform:
+            img = self.transform(img)
+        
+        # Get label
+        label = torch.tensor(self.labels[idx], dtype=torch.float32)
+        
+        return img, label
 ```
 
-## MIMIC-CXR Dataset
+### 2. Register in __init__.py
 
-### Structure
+Add to `data/__init__.py`:
+
+```python
+from .your_dataset import YourDataset
+
+__all__ = [
+    ...,
+    'YourDataset'
+]
 ```
-data/mimic-cxr/
-├── files/                              # Image files
-│   ├── p10/
-│   ├── p11/
+
+### 3. Update Downloader (Optional)
+
+If your dataset is on Kaggle, update `data/downloader.py`:
+
+```python
+def __init__(self):
+    self.kaggle_datasets = {
+        'nih-cxr': 'nih-chest-xrays/data',
+        'your-dataset': 'kaggle-user/dataset-name'
+    }
+```
+
+### 4. Use Your Dataset
+
+```python
+from data import DatasetRegistry
+
+# Your dataset is now available
+dataset = DatasetRegistry.get('your-dataset-name')(data_dir='./data')
+dataset.load()
+```
+
+## Dataset Structure
+
+Expected directory structure for NIH Chest X-ray:
+
+```
+nih-cxr/
+├── Data_Entry_2017.csv          # Labels file
+├── images_001/                   # Image directory 1
+│   ├── 00000001_000.png
+│   ├── 00000001_001.png
 │   └── ...
-├── mimic-cxr-2.0.0-chexpert.csv       # Labels
-└── mimic-cxr-2.0.0-metadata.csv       # Metadata
+├── images_002/                   # Image directory 2
+│   └── ...
+├── ...
+└── images_012/                   # Image directory 12
+    └── ...
 ```
 
-### Labels
-14 pathology classes:
-- Atelectasis
-- Cardiomegaly
-- Consolidation
-- Edema
-- Enlarged Cardiomediastinum
-- Fracture
-- Lung Lesion
-- Lung Opacity
-- No Finding
-- Pleural Effusion
-- Pleural Other
-- Pneumonia
-- Pneumothorax
-- Support Devices
+## Partitioning Strategies
 
-## Extending to Other Datasets
+### Dirichlet (Recommended)
+- Creates non-IID distribution using Dirichlet parameter α
+- Lower α = more heterogeneous
+- α = 0.5 is a good default
 
-### CheXpert
-```python
-# Similar structure to MIMIC-CXR
-# 5 pathology classes
-# ~224k images
-```
+### Pathology-based
+- Clients specialize in specific diseases
+- Simulates real-world hospital specializations
 
-### NIH Chest X-rays
-```python
-# 14 pathology classes
-# ~112k images
-# Different label format (text-based)
-```
+### Quantity-based
+- Varying dataset sizes across clients
+- Simulates different hospital sizes
 
-See `base_dataset.py` for the interface to implement.
+## Notes
+
+- All images are resized to 224x224 for model input
+- ImageNet normalization is used by default
+- Multi-label classification is supported
+- Minimum 100 samples per client is enforced

@@ -122,32 +122,51 @@ class DataPreprocessor:
         """Preprocess labels for multi-label classification.
         
         Args:
-            labels_df: DataFrame with label columns
+            labels_df: DataFrame with label columns or 'Finding Labels' column
             
         Returns:
             Binary label matrix (n_samples, n_classes)
         """
-        # MIMIC-CXR pathology columns (14 classes)
-        pathology_columns = [
-            'Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema',
-            'Enlarged Cardiomediastinum', 'Fracture', 'Lung Lesion',
-            'Lung Opacity', 'No Finding', 'Pleural Effusion', 'Pleural Other',
-            'Pneumonia', 'Pneumothorax', 'Support Devices'
+        # NIH Chest X-ray pathology classes (14 classes + No Finding)
+        pathology_classes = [
+            'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration',
+            'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax',
+            'Consolidation', 'Edema', 'Emphysema', 'Fibrosis',
+            'Pleural_Thickening', 'Hernia', 'No Finding'
         ]
         
-        # Extract pathology columns
-        available_columns = [col for col in pathology_columns if col in labels_df.columns]
+        # Check if labels are in 'Finding Labels' column (NIH format)
+        if 'Finding Labels' in labels_df.columns:
+            logger.info("Processing NIH Chest X-ray labels from 'Finding Labels' column")
+            
+            # Create binary matrix
+            labels_matrix = np.zeros((len(labels_df), len(pathology_classes)))
+            
+            for idx, row in labels_df.iterrows():
+                findings = str(row['Finding Labels']).split('|')
+                for finding in findings:
+                    finding = finding.strip()
+                    if finding in pathology_classes:
+                        class_idx = pathology_classes.index(finding)
+                        labels_matrix[idx, class_idx] = 1
+            
+            logger.info(f"Processed {len(pathology_classes)} pathology labels")
+            return labels_matrix
         
-        if not available_columns:
-            raise DataError("No pathology columns found in labels DataFrame")
-        
-        logger.info(f"Using {len(available_columns)} pathology labels")
-        
-        # Convert to binary (1 for positive, 0 for negative/uncertain)
-        labels = labels_df[available_columns].fillna(0)
-        labels = (labels == 1.0).astype(int)
-        
-        return labels.values
+        # Otherwise, check for individual columns (alternative format)
+        else:
+            available_columns = [col for col in pathology_classes if col in labels_df.columns]
+            
+            if not available_columns:
+                raise DataError("No pathology columns found in labels DataFrame")
+            
+            logger.info(f"Using {len(available_columns)} pathology labels")
+            
+            # Convert to binary (1 for positive, 0 for negative/uncertain)
+            labels = labels_df[available_columns].fillna(0)
+            labels = (labels == 1.0).astype(int)
+            
+            return labels.values
     
     def create_train_val_test_split(
         self,

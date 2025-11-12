@@ -3,6 +3,7 @@
 import os
 import hashlib
 import zipfile
+import time
 from pathlib import Path
 from typing import Optional
 import subprocess
@@ -23,7 +24,7 @@ class DataDownloader:
     
     def __init__(self):
         """Initialize the data downloader."""
-        self.kaggle_dataset = "mimic-cxr-jpg"
+        self.kaggle_dataset = "nih-chest-xrays/data"
         
     def download(self, source: str, output_dir: str) -> Path:
         """Download the MIMIC-CXR dataset.
@@ -49,11 +50,18 @@ class DataDownloader:
         else:
             raise DataError(f"Invalid download source: {source}. Use 'kaggle' or 'manual'")
     
-    def _download_from_kaggle(self, output_path: Path) -> Path:
-        """Download dataset using Kaggle API.
+    def _download_from_kaggle(
+        self, 
+        output_path: Path, 
+        max_retries: int = 3,
+        retry_delay: int = 5
+    ) -> Path:
+        """Download dataset using Kaggle API with retry logic.
         
         Args:
             output_path: Directory to save data
+            max_retries: Maximum number of download attempts
+            retry_delay: Delay between retries in seconds
             
         Returns:
             Path to downloaded data
@@ -79,19 +87,31 @@ class DataDownloader:
         
         logger.info(f"Downloading MIMIC-CXR from Kaggle to {output_path}")
         
-        try:
-            # Download using Kaggle API
-            # Note: Adjust dataset name based on actual Kaggle dataset
-            kaggle.api.dataset_download_files(
-                'mimic-cxr-jpg',
-                path=str(output_path),
-                unzip=True
-            )
-            logger.info("Download completed successfully")
-            return output_path
-            
-        except Exception as e:
-            raise DataError(f"Failed to download from Kaggle: {str(e)}")
+        # Retry logic for network failures
+        for attempt in range(1, max_retries + 1):
+            try:
+                logger.info(f"Download attempt {attempt}/{max_retries}")
+                
+                # Download using Kaggle API
+                # NIH Chest X-ray dataset
+                kaggle.api.dataset_download_files(
+                    'nih-chest-xrays/data',
+                    path=str(output_path),
+                    unzip=True
+                )
+                logger.info("Download completed successfully")
+                return output_path
+                
+            except Exception as e:
+                logger.warning(f"Download attempt {attempt} failed: {str(e)}")
+                
+                if attempt < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    raise DataError(
+                        f"Failed to download from Kaggle after {max_retries} attempts: {str(e)}"
+                    )
     
     def verify_integrity(self, data_dir: Path) -> bool:
         """Verify the integrity of downloaded data.
@@ -109,11 +129,10 @@ class DataDownloader:
             logger.error(f"Data directory does not exist: {data_dir}")
             return False
         
-        # Check for required files/directories
+        # Check for required files/directories for NIH Chest X-ray dataset
         required_items = [
-            'files',  # Image files directory
-            'mimic-cxr-2.0.0-chexpert.csv',  # Labels file
-            'mimic-cxr-2.0.0-metadata.csv',  # Metadata file
+            'images',  # Image files directory (or images_001, images_002, etc.)
+            'Data_Entry_2017.csv',  # Labels file
         ]
         
         missing_items = []
@@ -127,15 +146,19 @@ class DataDownloader:
             logger.error(f"Data integrity check failed. Missing: {missing_items}")
             return False
         
-        # Count image files
-        image_dir = data_dir / 'files'
-        if image_dir.exists():
-            image_count = sum(1 for _ in image_dir.rglob('*.jpg'))
-            logger.info(f"Found {image_count} image files")
-            
-            if image_count == 0:
-                logger.error("No image files found")
-                return False
+        # Count image files (NIH dataset has images in multiple folders)
+        image_count = 0
+        for img_dir in data_dir.glob('images*'):
+            if img_dir.is_dir():
+                count = sum(1 for _ in img_dir.glob('*.png'))
+                image_count += count
+                logger.info(f"Found {count} images in {img_dir.name}")
+        
+        if image_count == 0:
+            logger.error("No image files found")
+            return False
+        
+        logger.info(f"Total images found: {image_count}")
         
         logger.info("Data integrity check passed")
         return True

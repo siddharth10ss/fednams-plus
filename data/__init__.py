@@ -7,11 +7,13 @@ from .downloader import DataDownloader
 from .preprocessor import DataPreprocessor, MIMICCXRDataset
 from .partitioner import FederatedDataPartitioner
 from .base_dataset import BaseDataset, DatasetRegistry
+from .nih_dataset import NIHChestXrayDataset
 
 __all__ = [
     'DataDownloader',
     'DataPreprocessor',
     'MIMICCXRDataset',
+    'NIHChestXrayDataset',
     'FederatedDataPartitioner',
     'BaseDataset',
     'DatasetRegistry'

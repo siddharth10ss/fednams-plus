@@ -16,14 +16,21 @@
 
 
 
-- [ ] 2. Data module implementation
-- [ ] 2.1 Implement data downloading and validation
+- [-] 2. Data module implementation
+
+
+
+- [x] 2.1 Implement data downloading and validation
+
   - Create DataDownloader class with download() and verify_integrity() methods supporting Kaggle API
 
 
   - Implement authentication handling and checksum verification
   - Add retry logic for network failures
   - _Requirements: 1.1, 1.5_
+
+
+
 
 - [ ] 2.2 Implement data preprocessing pipeline
   - Create DataPreprocessor class with image resizing to 224x224
@@ -34,6 +41,9 @@
   - Implement multi-label encoding for MIMIC-CXR pathologies
   - Create stratified train/val/test splitting (70/15/15) with create_train_val_test_split()
   - _Requirements: 1.1, 11.3, 11.4_
+
+
+
 
 - [ ] 2.3 Implement federated data partitioning
   - Create FederatedDataPartitioner class with partition() method
@@ -46,6 +56,9 @@
   - Create generate_statistics() method to compute label distributions, sample counts, and heterogeneity metrics
   - Save partition metadata to JSON files in client-specific directories
   - _Requirements: 1.2, 1.3, 1.4_
+
+
+
 
 - [ ] 2.4 Create abstract dataset interface for extensibility
   - Define BaseDataset abstract class with load(), preprocess(), and get_labels() methods
