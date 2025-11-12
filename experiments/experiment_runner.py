@@ -263,7 +263,8 @@ class ExperimentRunner:
         orchestrator = FederatedOrchestrator(
             clients=clients,
             aggregator=aggregator,
-            config=self.config.fed_config
+            config=self.config.fed_config,
+            num_local_epochs=self.config.training_config.num_local_epochs
         )
         
         # Run training

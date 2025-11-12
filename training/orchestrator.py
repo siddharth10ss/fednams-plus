@@ -26,7 +26,8 @@ class FederatedOrchestrator:
         self,
         clients: List[LocalTrainer],
         aggregator: FedAvgAggregator,
-        config: FedConfig
+        config: FedConfig,
+        num_local_epochs: int = 5
     ):
         """Initialize federated orchestrator.
         
@@ -34,10 +35,12 @@ class FederatedOrchestrator:
             clients: List of local trainers (one per client)
             aggregator: Federated aggregator
             config: Federated learning configuration
+            num_local_epochs: Number of local epochs per round
         """
         self.clients = clients
         self.aggregator = aggregator
         self.config = config
+        self.num_local_epochs = num_local_epochs
         
         self.current_round = 0
         self.global_metrics = []
@@ -87,10 +90,10 @@ class FederatedOrchestrator:
             train_loader = train_loaders[client_id]
             
             # Train for local epochs
-            for epoch in range(self.config.num_local_epochs):
+            for epoch in range(self.num_local_epochs):
                 train_metrics = trainer.train_epoch(train_loader)
                 
-                if epoch == self.config.num_local_epochs - 1:
+                if epoch == self.num_local_epochs - 1:
                     logger.info(
                         f"  Epoch {epoch+1}: "
                         f"loss={train_metrics['loss']:.4f}, "
