@@ -34,7 +34,6 @@ ENV/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
-*.ipynb
 
 # Data files (but not data module code)
 data/**/*.csv
