@@ -268,6 +268,13 @@ class FederatedDataPartitioner:
         Returns:
             Label array (n_samples, n_classes)
         """
+        # Fast path: check if dataset has labels attribute (NIH dataset)
+        if hasattr(dataset, 'labels'):
+            logger.info("Using pre-computed labels from dataset")
+            return dataset.labels
+        
+        # Slow path: load each sample (only for datasets without labels attribute)
+        logger.warning("Loading all samples to extract labels - this may be slow")
         labels = []
         for i in range(len(dataset)):
             _, label = dataset[i]
