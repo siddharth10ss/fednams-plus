@@ -59,8 +59,15 @@ class ConfigLoader:
         """
         try:
             # Data config
+            image_size = config_dict['data']['image_size']
+            # Handle both single int and list/tuple formats
+            if isinstance(image_size, int):
+                image_size = (image_size, image_size)
+            else:
+                image_size = tuple(image_size)
+            
             data_config = PreprocessConfig(
-                image_size=tuple(config_dict['data']['image_size']),
+                image_size=image_size,
                 normalization=config_dict['data']['normalization'],
                 augmentation=config_dict['data']['augmentation'],
                 augmentation_params=config_dict['data'].get('augmentation_params', {})
@@ -103,7 +110,7 @@ class ConfigLoader:
                 model_config=model_config,
                 training_config=training_config,
                 fed_config=fed_config,
-                output_dir=Path(config_dict['output_dir']),
+                output_dir=Path(config_dict.get('output_dir', 'outputs')),
                 seed=config_dict['seed'],
                 device=config_dict['device']
             )
