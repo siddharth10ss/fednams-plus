@@ -20,7 +20,7 @@ data:
 # Federated learning configuration
 federated:
   num_clients: 5
-  num_rounds: 50
+  num_rounds: 30
   client_fraction: 1.0  # Fraction of clients per round
   min_clients: 3
   partition_strategy: "dirichlet"
@@ -40,7 +40,7 @@ model:
 training:
   batch_size: 32
   learning_rate: 0.001
-  num_local_epochs: 5
+  num_local_epochs: 10
   optimizer: "adam"  # adam, sgd, adamw
   scheduler: "cosine"  # cosine, step, null
   early_stopping_patience: 10
